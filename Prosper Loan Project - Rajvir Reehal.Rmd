@@ -1,0 +1,752 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+Explore and Summarize Loan Data from Prosper by Rajvir Reehal 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(scales)
+```
+
+```{r echo=FALSE, Load_the_Data}
+### Load the Data
+
+pld <- read.csv("prosperLoanData.csv", sep = ',', stringsAsFactors=FALSE)
+```
+Dataset Summary
+```{r echo=FALSE, Dimestions}
+dim(pld)
+```
+There are 113,937 loans with 81 variables.
+```{r echo=FALSE, Range_of_Data}
+range(pld$ListingCreationDate)
+```
+
+We can see the first loan in the dataset originated on 2015-11-09 and the
+latest loan we have in the dataset is from 2014-03-10.
+
+The dataset I will be exploring is loan data from Prosper, a peer-to-peer
+lending platform. Borrowers can borrow up to $2,000 to $35,000  from the
+marketplace and lenders can base their decision on the borrowers credit
+history and loan information. 
+
+I will being my analysis with a short summary of the data and then I will
+create univariate plots to understand the structure of individual variables 
+I am interested in learning more about.
+
+# Univariate Plots Section
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Prosper_Score}
+ggplot(data = pld, aes(x = ProsperScore))+
+  geom_histogram(stat = 'count')+
+  ylab("Number of Loans")
+```
+
+The Prosper Score risk rankings looks normally distriuted with the mean
+close to 6.
+
+I noticed 29,084 rows of data consisted of NA. After looking
+further into it, I noticed it these loans originated before before July 2009.
+Loans that originated before July 2009 do not have data for ProsperScore,
+ProsperRating (alpha), ProsperRating (numeric), EstimatedReturn, 
+EstimatedEffectiveYield, and EstimatedLoss.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Loan_Origination_Quarter}
+pld <- mutate(pld, ordered_quarters = 
+                paste(substring(pld$LoanOriginationQuarter, 4, 7), 
+                      substring(pld$LoanOriginationQuarter, 1, 2), sep = " "))
+
+ggplot(data = pld, aes(x = ordered_quarters))+
+  geom_histogram(stat = 'count')+
+  theme(axis.text.x = element_text(angle = 90))+
+  xlab("Quarter")+
+  ylab("Number of Loans Originated")
+```
+
+Since the company was founded in 2005 to Q2 of 2008, the company saw a steady
+increase in the number of loans originated. But as most of the developed
+world dove deep into the recession, the number of loan originations decreased
+significantly untl there were no loans originating in Q1 2009.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Loan_Original_Amount}
+ggplot(data = pld, aes(x = LoanOriginalAmount))+
+  geom_histogram(binwidth = 1000)+
+  xlab("Original Loan Amount")+
+  ylab("Number of Loans")
+
+summary(pld$LoanOriginalAmount)
+```
+
+Most of the loans had a principal amount of less than $10,000 with a mean of
+$8,337 and median of $6,500. We can see peaks in the plot at multiples of 
+$5,000 up to 30,000.
+
+Let's examine that reasons for taking out these loans.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Listing_Categories}
+### Listing categorical labels
+listcatlabels <- c('Debt Consolidation', 'Home Improvement', 'Business', 'Personal Loan', 
+       'Student Use', 'Auto', 'Baby & Adoption', 'Boat', 'Cosmetic Procedure', 
+       'Engagement Ring', 'Green Loans', 'Household Expenses', 
+       'Large Purchases', 'Medical/Dental', 'Motorcycle', 'RV', 'Taxes',
+       'Vacation', 'Wedding Loans', 'Other', 'Not Available')
+
+### Factoring categories
+pld$ListingCategory <- factor(pld$ListingCategory..numeric., 
+                              levels = c(1:6,8:20,7,0), labels = listcatlabels)
+
+ggplot(data = pld, aes(x = ListingCategory))+
+  geom_histogram(stat = 'count')+
+  theme(axis.text.x = element_text(angle = 90))+
+  ylab("Count")+
+  xlab("Listing Category")
+```
+
+Quite a large portion of loans are taken out for the purpose of consolidating
+loans. This could indicate that a large amount of borrowers do not have a
+high enough income to pay off their loans quickly, or they aren't responsible
+with their finances and take on more debt than they should, or they are at
+a point in their life where they are taking on debt (fist car, first home,
+paying off student loans) and they're just looking to lower their interest
+payments by consolidating. Let's examine this further.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Income_Ranges}
+### Listing income ranges
+incomelevels <- c('$0','$1-24,999', '$25,000-49,999',
+                  '$50,000-74,999', '$75,000-99,999', 
+                  '$100,000+', 'Not displayed', 'Not employed')
+
+### Factoring income ragnes
+pld$IncomeRange <- factor(pld$IncomeRange, levels = incomelevels)
+
+ggplot(data = pld, aes(x = IncomeRange))+
+  geom_histogram(stat = 'count')+
+  theme(axis.text.x = element_text(angle = 90))+
+  ylab("Count of Borrowers")+
+  xlab("Income Range")
+```
+
+Most of the borrowers have incomes inbetween $25,000-$49,999 and 
+$50,000-$74,999.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Employment_Status}
+
+ggplot(data = pld, aes(x = EmploymentStatus))+
+  geom_histogram(stat = 'count')+
+  theme(axis.text.x = element_text(angle = 90))+
+  ylab("Count of Borrowers")+
+  xlab("Employment Status")
+```
+
+Most of the borrwers have identified themselves as employed, however they
+did not povide any more details about the type of employment.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Employment_Status_Duraton}
+
+ggplot(data = pld, aes(x = EmploymentStatusDuration))+
+  geom_histogram(binwidth = 12)+
+  theme(axis.text.x = element_text(angle = 90))+
+  ylab("Count of Borrowers")+
+  xlab("Employment Status Duration")
+
+summary(pld$EmploymentStatusDuration)
+```
+
+This graph exhibits a right-skewed disribution as the plot immediately preaks
+then tails out as the employment status durration increases.
+7625 rows of data were removed when making this plot as that many loans did
+not have data for EmploymentStatusDuration.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Debt_to_Income}
+
+ggplot(data = pld, aes(x = DebtToIncomeRatio))+
+  geom_histogram(binwidth = 0.1)+
+  theme(axis.text.x = element_text(angle = 90))+
+  ylab("Count of Borrowers")+
+  xlab("Debt To Income")
+```
+
+We have a large outlier which is making it difficult to view the plot.
+Let's remove the outlier for a better visualization.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Debt_to_Income_Without_Outlier}
+
+ggplot(data = pld, aes(x = DebtToIncomeRatio))+
+  geom_histogram(binwidth = 0.05)+
+  coord_cartesian(xlim = c(0, 1.5))+
+  theme(axis.text.x = element_text(angle = 90))+
+  ylab("Count of Borrowers")+
+  xlab("Debt To Income")
+
+summary(pld$DebtToIncomeRatio)
+
+```
+
+The majority of borrowers have a debt-to-income ratio of less than 0.5.
+We can see after zooming in, this plot is slightly right-skewed and there
+is a tail on the right. The median ratio is 0.22 and 75% of borrowers
+have a ratio of less than 0.32.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Estimated_Return}
+
+ggplot(data = pld, aes(x = EstimatedReturn))+
+  geom_histogram(binwidth = 0.005)+
+  ylab("Count of Loans")
+  xlab("Estimated Return")
+
+summary(pld$EstimatedReturn)
+```
+
+The plot seems to follow a normal distribution with a mean of 9.6%. Which
+is a great return margin. Let's plot how much borrowers are paying for their
+loans.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Borrower_Rate}
+
+ggplot(data = pld, aes(x = BorrowerRate))+
+  geom_histogram(binwidth = 0.01)+
+  ylab("Count of Loans")
+  xlab("Borrower Rate")
+
+summary(pld$BorrowerRate)
+```
+
+The plot seems to follow a normal distributon with a right skew. The mean 
+borrowing rate is 19.28%. That's a very high rate to pay every year.
+
+Let's examine how long borrowers are borrowing for. It would be very
+interesting to see how much of their income goes towards interest payments.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Lender_Yield}
+
+ggplot(data = pld, aes(x = LenderYield))+
+  geom_histogram(binwidth = 0.01)+
+  ylab("Count of Loans")
+  xlab("Lender Yield")
+
+summary(pld$LenderYield)
+```
+
+Most of the lender yields are between 5% and 35%. The plot follows a normal
+distribution with a right-skew and a peak near 31%.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Term}
+
+ggplot(data = pld, aes(x = Term))+
+  geom_histogram()+
+  ylab("Count of Loans")
+
+summary(pld$Term)
+```
+
+All of the loans seems to be offered in a 1-year, 3-year, or 5-year term.
+Most of the loans are 3-year loans. This is quite a long time to pay a
+mean interest borrowing rate of 19.28%. Over three years, a borrower would
+be paying almost 60% of the original loan value in interest payments.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Loan_Status}
+
+ggplot(data = pld, aes(x = LoanStatus))+
+  geom_histogram(stat = "count")+
+  coord_trans(y = 'sqrt')+
+  theme(axis.text.x = element_text(angle = 90))+
+  ylab("Count of Loans")
+```
+
+Most of the loans are either completed or are current loans. However, there
+is a large amount of charged-off and defaulted loans. Further into the
+analysis I want to see if the propsre rating is accurate in determining
+if a loan will perform or not.
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+
+The structure of the dataset consists of 81 variables with 113937
+observations. Each observation is a loan and the variables describe the
+loans with details of the loan and details of the borrower. The observations
+are from 2005 to 2014. The variable types are int, num, and ch.
+
+### What is/are the main feature(s) of interest in your dataset?
+
+The main features of interest in the dataset are the yield and return rates
+along with the various amount of loan characteristics. This will allow me to
+guess what are the common loan characteristics of loans that become
+delinquent and what loans characteristics makes the loan a safe investment.
+
+Another feature which interested me what how I can view through plots the
+effects of the recession on the loan market
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+
+The other fetures in the dataset that will help support my investigation
+are the current credit line, total inquires, revolving monthly payments,
+and bank card utilization variables.
+
+### Did you create any new variables from existing variables in the dataset?
+
+I did not see a need to create new variables at this point of the analysis.
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form \
+of the data? If so, why did you do this?
+
+In the Lender Yield and Borrower Rate plots, there is an unusual spike at 
+the 31% and 32% points in the plot, respectively,  which I may try to 
+explain as I investigate further.
+
+As for the second question, I factorized categorical variables to order them
+in a manner to make the plot readable. 
+
+# Bivariate Plots Section
+
+```{r echo=FALSE, Credit_Utilization_vs_Borrower_Rate}
+ggplot(data = pld, aes(y = BorrowerRate, x = BankcardUtilization))+
+  geom_point(alpha = 1/25)+
+  coord_cartesian(xlim = c(0, 2), ylim = c(0, 0.4))+
+  ggtitle("Bank Card Utilization vs Borrower Rate")
+```
+
+For this plot, I was expecting the borrower rate to increase as bank card
+utilization increased because a high bank card utilization rate may indicate
+that the borrower is not able to pay off their credit card frequently and
+thus has to pay the high interest rates on credit cards. 
+
+And we can see this trend in the plot after adjusting the alpha. As the 
+borrower rate increases, so does the bank card utilization. In the area 
+where the borrower rate is high and the bank card utilizaton is low, we can
+see there are not many loans. An interesting feature of this plot is that
+as bank card utilization increases, the borrower rate becomes more
+dispersed. It looks like a skewed-funnel.
+
+Maybe there are relationships between the utilization rate and
+other variables that are in play here as the utilization rate increases.
+
+Another interesting feature of this plot is that at the 100% utilization 
+rate there seems to be a limit, however there are a small amount of loans
+above the 100% utilization rate. This could be because of the new credit
+requirements that banks and landers had to follow which the government
+introduced after the recession or maybe it could be that once borowers hit
+100% of their card utilization, they looked elsewhere for credit.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bank_Utilization_Before_And_After_Recession}
+
+### Create subsets of data to compare pre-recession and post-recession bank card
+### utilization.
+
+pldpost20090701 <- subset(pld, pld$ListingCreationDate > "2009-07-01")
+
+pldpre20090701 <- subset(pld, pld$ListingCreationDate < "2009-07-01")
+
+ggplot(data = pldpost20090701, aes(y = BorrowerRate, x = BankcardUtilization))+
+  geom_point(alpha = 1/25)+
+  coord_cartesian(ylim = c(0, 0.4), xlim = c(0, 2))+
+  ggtitle("Bank Card Utilization vs Borrower Rate Post Recession")
+
+ggplot(data = pldpre20090701, aes(y = BorrowerRate, x = BankcardUtilization))+
+  geom_point(alpha = 1/25)+
+  coord_cartesian(ylim = c(0, 0.4), xlim = c(0, 2))+
+  ggtitle("Bank Card Utilization vs Borrower Rate Pre Recession")
+```
+
+We can see that the limit at 100% utilization in the post recession plot
+a more defined than the pre recession plot. There are many more loans
+that have > 100% card utilizaion pre recession than post recession, this 
+could be due to more stringent borrowing requirements enacted by Prosper
+after the recession.
+
+Let's conduct a correlation test to measure the strength of this
+relationship. 
+
+```{r, Corrrelation_test_borrowerrate_vs_bankcardutilization}
+cor.test(pld$BankcardUtilization, pld$BorrowerRate, method = "pearson")
+```
+
+With a p-value of 2.2e-16, this is much less than the significance level of
+alpha = 0.05. We can conclude that bank card utilization and borrower rate
+are significantly correlated.
+
+Let's continue investigating what effects the borrower rate.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Borrower_Rate_vs_Available_BankCard_Credit}
+ggplot(data = pldpre20090701, aes(y = BorrowerRate, x = AvailableBankcardCredit))+
+  geom_point(alpha = 1/25)+
+  coord_cartesian(ylim = c(0, 0.4), xlim = c(0, 50000))+
+  ggtitle("Bank Card Utilization vs Available Bank Card Credit")
+```
+
+We can see that most of the loans with borrowers that have a high amount of
+available credit have a lower borrower rate as expected.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bank_Card_Utilization_vs_Debt_to_Income}
+
+ggplot(data = pld, aes(y = BankcardUtilization, x = DebtToIncomeRatio ))+
+  geom_jitter(alpha = 1/25)+
+  geom_smooth()+
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1))+
+  xlab("Debt To Income")+
+  ylab("Bank Card Utilization")+
+  ggtitle("Bank Card Utilization vs Debt to Income")
+```
+
+The two variables have a positive relationship at a debt to income of 
+approximately 0.4, then seems to fall and rise where there are not a great
+number of loans.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Borrower_Rate_vs_Credit_Score}
+
+### I created new variable averaging the lower and upper range credit scores.
+
+pld$AverageCreditScore <- 
+  (pld$CreditScoreRangeLower+pld$CreditScoreRangeUpper)/2
+
+ggplot(data = pld, aes(y = BorrowerRate, x = AverageCreditScore))+
+  geom_jitter(alpha = 1/100)+
+  geom_smooth()+
+  xlim(450, 900)+
+  xlab("Average Credit Score")+
+  ylab("Borrower Rate")+
+  ggtitle("Borrwer Rate vs Average Credit Score")
+```
+
+There seems to be a negative relationship between the two variables.
+For the credit scores over 750, the borrower rate is low and the ranges of
+borrowing rates is smaller for most of the loans compared to borrowing rates
+for borrowers with lower credits scores.
+
+Let's compare the borrower rate with the prosper score to see if there is a 
+stronger relationship.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Borrower_Rate_vs_Prosper_Score}
+
+ggplot(data = na.omit(pld[c('ProsperScore', 'BorrowerRate')]), 
+       aes(y = BorrowerRate, x = as.factor(ProsperScore)))+
+  geom_boxplot()+
+  xlab("Prosper Score")+
+  ylab("Borrower Rate")+
+  ggtitle("Borrwer Rate vs Prosper Score")
+```
+
+As we can see, the higher the prosper score for a loan, the lower the
+borrowing rate is.
+
+But how accurate are prosper scores in determining if a loan will perform or
+not?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Prosper_Score_Accuracy}
+
+### Categorize loans by performing loans (completed, current, final payment in
+### progress), non-performing loans (charged off, defaulted), in arrears and, 
+### cancelled.
+pld <- mutate(pld, PerformanceStatus = ifelse(LoanStatus %in% 
+                                 c('Completed', 'Current', 
+                                   'FinalPaymentInProgress'), 0, 
+                               ifelse(LoanStatus %in%
+                                        c('Chargedoff', 'Defaulted'), 2,
+                                      ifelse(LoanStatus %in%
+                                               c('Cancelled'), 3, 1))))
+
+### Factor categories
+pld$PerformanceStatus <- factor(pld$PerformanceStatus, levels = 0:3,
+                        labels = c('Performing', 'In Arrears', 'Defaulted',
+                                   'Cancelled'))
+
+
+ggplot(data = pld, aes(x = ProsperScore, fill = PerformanceStatus))+
+  geom_bar(position = 'fill', stat = 'count')+
+  coord_cartesian(ylim = c(0, 0.5))+
+  ylab("Proportion")
+```
+
+Prosper scores 5-11 follow the pattern I was expecting. I am surprised by
+the difference in the default rates from prosper score 1 to score 2. And
+it's surprising that prosper scores 2-4 have a similar performance of loans
+with scores of 6-8.
+
+Another interesting observation is the large amount of defaults for loans
+originated before before July 2009.
+
+Let's take a look into the return rates for borrowers for each quarter.
+Based on this plot, I expect return rates to be much lower before July 2009
+than return rates after July 2009.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Lender_Return_By_Quarter}
+### Create subset dataframe to summarise and calculate the average lender yield
+### by quarter.
+lender_yield_by_q <- summarise(group_by(pld, ordered_quarters), 
+          lender_yield = mean(LenderYield, na.rm = TRUE))
+
+ggplot(data = lender_yield_by_q, aes(x = ordered_quarters, y = lender_yield))+
+  geom_line(group=1)+
+  theme(axis.text.x = element_text(angle = 90))+
+  scale_y_continuous(labels=percent)+
+  xlab("Quarter")
+```
+
+We have to keep in mind that the plot graphs the estimated lender yield as
+it is calculated at the origination of the loan. Lender yield rose until 
+Q4 2010 and started falling.
+
+Next I will calculate the actual return on a loan by subracting losses(if 
+any) from the original loan amount and will annulize the return. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Actual_Yield}
+
+### I calculate the net payments for the lender and then used this information
+### to calculate the annualized rate of return for completed, current, 
+### defaulted, and chargedoff loans. For current loans, I calculated the return
+### rate for the past 12 months of loans that have existed and are not in 
+### arrears for 12 months or over. This chart plots the average return by loan
+### inception date and weighs each loan equally.
+
+### Variable for net payments to lender.
+NetPayments <- pld$LP_CustomerPayments+
+                 pld$LP_ServiceFees+
+                 pld$LP_CollectionFees
+
+### Create new dataframe attribute which provides the yield for each loan.
+### Loans in final payment and loans in arrears were not included as they
+### represent a small portion of total loans.
+pld <- mutate(pld, 
+              ActualReturnByLoan = ifelse(LoanStatus == 'Completed',
+                                        ((NetPayments/LoanOriginalAmount)^(12/LoanMonthsSinceOrigination))-1,
+                                      ifelse(LoanStatus == 'Current',
+                                        ((MonthlyLoanPayment*12)/LoanOriginalAmount),
+                                      ifelse((LoanStatus == 'Defaulted' | LoanStatus == 'Chargedoff'), ((NetPayments/LoanOriginalAmount)^(12/LoanMonthsSinceOrigination))-1,NA))))
+
+### Create subset dataframe to calculate the average yield by quarter.
+ActualReturnByloanDF <- summarise(group_by(pld, ordered_quarters), 
+          LenderActualYield = mean(ActualReturnByLoan, na.rm = TRUE))
+
+ggplot(data = ActualReturnByloanDF[ActualReturnByloanDF$ordered_quarters!="2009 Q2",], aes(x = ordered_quarters, y = LenderActualYield))+
+  geom_line(group=1)+
+  theme(axis.text.x = element_text(angle = 90))+
+  xlab("Quarter")
+```
+
+By the calculations, Prosper lenders experienced losses from Prosper's
+inception and through the recession and provided positive returns after 
+prosper was required to register with the SEC. Q2 2009 was quite interesting 
+as all loans received $0 in customer payments, therefore it was removed from
+the plot to make it more readable. 
+
+For loans that have existed for less than 12 months and are in good standing
+their returns were annualized.
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the dataset?
+
+The return lenders realized before the recession was very interesting as
+their return was lower than after the recession. It was also interesting
+to see through the plots how Prosper became more strict in they borrowers
+that were approved. Looking at the bank utilization plots we can see there
+were less borrowers with less than 100% card utilizaton after the recession.
+
+I was expecting to see stronger relationships in the plots between borrower 
+rate and other variables such as debt to income and bank card utilization.
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?
+
+I was really interested at how the actual return lenders realized for loans
+that originated before the recession were all losses. It's surprising that
+there was still interest in Prosper loans after the overall return on the 
+lender funds were at loss.
+
+### What was the strongest relationship you found?
+The relstionship between the Prosper score and borrower rate.
+
+# Multivariate Plots Section
+
+```{r echo=FALSE, Multivariate_Plots}
+ggplot(data = pld, aes(x = ordered_quarters, fill = PerformanceStatus))+
+  geom_bar(stat = 'count')+
+  theme(axis.text.x = element_text(angle = 90))+
+  xlab("Quarter")
+```
+
+There are a greater proportion and number of defaulted loans before the
+recession that after the recession. This can be attributed to Prosper's
+registration with the SEC.
+
+```{r echo=FALSE, Actual_Yield_vs_Estimated_Yield}
+
+pldprerec <- subset(pld, pld$ListingCreationDate > "2009-07-01")
+plot1 <- ggplot(aes(x = LenderYield, y = ActualReturnByLoan), data = pldprerec) +
+    geom_point(alpha = 0.5) +
+    coord_cartesian(xlim = c(0, 0.35))+
+    ggtitle("Actual Yield vs Estimated Yield (Pre-Recession)")
+
+pldpostrec <- subset(pld, pld$ListingCreationDate < "2009-07-01")
+plot2 <- ggplot(aes(x = LenderYield, y = ActualReturnByLoan), data = pldpostrec) +
+    geom_point(alpha = 0.5) +
+    coord_cartesian(xlim = c(0, 0.35))+
+    ggtitle("Actual Yield vs Estimated Yield (Post-Recession)")
+
+grid.arrange(plot1, plot2, ncol=1, nrow =2)
+```
+
+I created these plots to determine how accurate the lender yield was compared
+to the actual return of each loan. I split the graphs with pre-recession
+and post-recession loans to see the difference in actual returns after 
+Prosper registered with the SEC.
+
+We can see for most loans that the actual return was lower than the predicted
+lender yield. We can also see the change in distribution between the two
+plots before and after the recession; loans that experienced losses
+realized greater losses before the recession than after.
+
+```{r echo=FALSE, AvailableCredit_vs_CreditScore_vs_ProsperScore}
+plot3 <- ggplot(data = pldpost20090701, aes(y = AvailableBankcardCredit, x = CreditScoreRangeUpper, color = ProsperScore)) +
+    geom_point(alpha = 1, position = "jitter") +
+    coord_cartesian(xlim = c(600, 800))+
+    ggtitle("Available Card Credit vs Credit Score Upper vs Prosper Score")
+
+plot4 <- ggplot(data = pldpost20090701, aes(y = AvailableBankcardCredit, x = CreditScoreRangeLower, color = ProsperScore)) +
+    geom_point(alpha = 1, position = "jitter") +
+    coord_cartesian(xlim = c(580, 800))+
+    ggtitle("Available Card Credit vs Credit Score Lower vs Prosper Score")
+
+grid.arrange(plot3, plot4, ncol = 1, nrow = 2)
+```
+
+This plots the relationship between the available card credit and credit 
+score and their effect in calculating ther Prosper Score. As credit score
+rises, so does the available bank card credit. And in each column grouping
+that was created, the share of higher prospe score loans increases as
+the cresit score increases.
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+
+As I saw the realtionship that available bank card credit and credit scores 
+had with the borrower rate in the bivariate plots section, it indicated 
+these variables were used the the model to create the Prosper Score as this
+relationship can be viewed in the plots above.
+
+### Were there any interesting or surprising interactions between features?
+
+The large share of defaulted loans in the quarters before the recession
+were very surprising to me as it should've been a red flag to lenders
+trying to invest their savings in Prosper loans.
+
+The actual return by loan before and after the recession were interesting 
+as well. Prosper tightened their borrower requirements to reduce that number
+of defaulted loans and it can be visualized through the first two plots.
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the \
+strengths and limitations of your model.
+No.
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+ggplot(aes(x= DebtToIncomeRatio, y=LenderYield, color=ProsperScore), 
+       data=na.omit(filter(pld, DebtToIncomeRatio < 1))) +
+  geom_point(alpha = 1) +
+  ggtitle("Lender Yield  vs Debt to Income Ratio vs Prosper Rate") +
+  xlab ("Debt To Income Ratio < 1") +
+  ylab ("Lender Yield")
+```
+
+### Description One
+This plots the relationship between the estimated lender yield, debt to 
+income and the Prosper score. In the bottom left corner where debt to
+income is low, the Prosper score is higher and intuitively, the lender yield
+is low. But as the lender yield increases, so does the Prosper score and 
+debt to income. However, there are still borrowers with low debt to income
+and a high lender, this could be due to other factors that make the borrower
+more risky.
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+
+pld$ActualReturnByLoan.bucket <- with(pld, cut(as.numeric(ActualReturnByLoan), 
+                                         c(-1, -0.5, 0, 0.1, 0.2, 0.3, 
+                                           0.4, 0.5, 1, 2)))
+
+pld$ActualReturnByLoan.bucket <- factor(pld$ActualReturnByLoan.bucket, 
+                                      labels = c("-100% to -50%", "-50% to 0%", "0%-10%",
+                                      "10%-20%", "20%-30%", "30%-40%", "40%-50%",
+                                      "50%-100%", "100%-200%"))
+
+ggplot(data = pld, aes(x = ProsperScore, fill = ActualReturnByLoan.bucket))+
+  geom_bar(position = 'fill', stat = 'count')+
+  ylab("Proportion")+
+  ggtitle("Actual Return by Prosper Score")
+```
+
+### Description Two
+
+This plot shows how the relationship between the Prosper score and actual
+yield. At the lower end Prosper scores, these loans are deemed very risky,
+you can expect a yield anywhere between a great loss or a great positive 
+yield. And this is apparent in the proportion of the return buckets for each
+Prosper score. The saying "the greater the risk the greater the return...
+or loss" is visible here. At the higher end of the Prosper scores, these 
+loans are very safe and are the least likely to default, hence their returns
+are low. The patterns of the proportions are just as I would expect the to 
+be as the Prosper score changes. As the Prosper score goes higher, the 
+proportions of loans with very high loans decreases along wih the proportion
+of loans with very low returns. 
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+
+ggplot(data = ActualReturnByloanDF[ActualReturnByloanDF$ordered_quarters!="2009 Q2",], aes(x = ordered_quarters, y = LenderActualYield))+
+  geom_line(group=1, color = 'coral3')+
+  geom_line(data = lender_yield_by_q, aes(y = lender_yield), group = 1, color = 'steelblue')+
+  theme(axis.text.x = element_text(angle = 90))+
+  xlab("Quarter")+
+  ylab("Yield")+
+  ggtitle("Actual Yield vs Estimated Yield (by quarter)")
+```
+
+### Description Three
+
+For the third graph, I decided to keep it simple and plotted the actual 
+yield vs the estimated yield. This is to show the great difference between
+them two. I'm sure all of the lenders that experienced losses with Prosper
+would be very frsustrated at seeing these results as it's apparent that
+Prosper didn't do their due diligence in screening their borrowers until
+they were forced to register with the SEC.
+
+------
+
+# Reflection
+
+This dataset was very interesting to analyze. There were some variables that
+I expected to have a strong relationship to the estimated yield, but didin't.
+This made me realize that there are many other variables to consider when
+determining the risk of an individual borrower. However, I did expect to see
+a stronger relationship between the credit card utilization and the 
+borrower rate as credit card utilization, to me, determines if a borrower
+understand how inefficient it is to borrow money from a credit card as they
+have very high interest rates. If a borrower has high credit card utilization
+then I'd deem them to be a risky borrower as they don't seem to understand
+what should be their financial priorities. 
+
+This project made me a lot more comfortable with using R as it forced me to
+manipulate the data, create different types of plots, create new variables
+to see new insights, and to choose the best way to visualize the data. I
+struggles with some of the data manipulation, but searching the web made it 
+a lot easier to solve as many other people have documented similar struggles
+along with their solutions.
+
+If I had more time with the dataset, I would have tried to create a model
+that mimics the way the Prosper score is calculated.
